@@ -1,0 +1,103 @@
+tools:
+  - name: subfinder
+    version: v2.6.5
+    install: go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@v2.6.5
+    version_cmd: subfinder -version
+    passive_run: subfinder -d {domain} -silent
+    active_run: subfinder -d {domain} -active -silent
+    rate_limit: 10
+
+  - name: amass
+    version: v4.2.0
+    install: go install github.com/owasp-amass/amass/v4/...@v4.2.0
+    version_cmd: amass -version
+    passive_run: amass enum -passive -d {domain}
+    active_run: amass enum -active -brute -d {domain}
+    rate_limit: 5
+
+  - name: findomain
+    version: 10.0.1
+    install: cargo install findomain
+    version_cmd: findomain --version
+    passive_run: findomain -t {domain} -q
+    active_run: findomain -t {domain} --resolved -q
+    rate_limit: 2
+
+  - name: assetfinder
+    version: v0.1.1
+    install: go install github.com/tomnomnom/assetfinder@v0.1.1
+    version_cmd: assetfinder -h
+    passive_run: assetfinder --subs-only {domain}
+    rate_limit: 2
+
+  - name: sublist3r
+    version: latest
+    install: git clone https://github.com/aboul3la/Sublist3r.git && cd Sublist3r && pip3 install -r requirements.txt
+    version_cmd: python3 sublist3r.py -h
+    passive_run: python3 sublist3r.py -d {domain} -o -
+    rate_limit: 2
+    workdir: Sublist3r
+
+  - name: subscraper
+    version: latest
+    install: git clone https://github.com/m8sec/subscraper.git && cd subscraper && pip3 install -r requirements.txt
+    version_cmd: python3 subscraper.py -h
+    passive_run: python3 subscraper.py -d {domain} -silent -module-only
+    rate_limit: 2
+    workdir: subscraper
+
+  - name: dome
+    version: latest
+    install: git clone https://github.com/v4d1/Dome.git && cd Dome && pip3 install -r requirements.txt
+    version_cmd: python3 dome.py -h
+    passive_run: python3 dome.py -m passive -d {domain}
+    rate_limit: 2
+    workdir: Dome
+
+  - name: as3nt
+    version: latest
+    install: git clone https://github.com/cinerieus/as3nt.git && cd as3nt && pip3 install -r requirements.txt
+    version_cmd: python3 as3nt/core.py -h
+    passive_run: python3 as3nt/core.py -t {domain} -11
+    rate_limit: 2
+    workdir: as3nt
+
+  - name: substr3am
+    version: latest
+    install: git clone https://github.com/nexxai/Substr3am.git && cd Substr3am && pip3 install -r requirements.txt
+    version_cmd: python3 Substr3am.py -h
+    passive_run: python3 Substr3am.py -f {domain}
+    rate_limit: 2
+    workdir: Substr3am
+
+  - name: sudomy
+    version: latest
+    install: git clone https://github.com/Screetsec/Sudomy.git && cd Sudomy && pip3 install -r requirements.txt && cp sudomy.api.dist sudomy.api && chmod +x sudomy
+    version_cmd: bash sudomy -h 2>&1 | head -1 || echo "sudomy"
+    passive_run: bash sudomy -d {domain} 2>&1 | grep -oP '(?<=\[)[^\]]+(?=\])' | sort -u
+    rate_limit: 10
+    workdir: Sudomy
+
+  - name: dnsx
+    version: latest
+    install: go install github.com/projectdiscovery/dnsx/cmd/dnsx@latest
+    version_cmd: dnsx -version
+    active_run: dnsx -silent -d {domain} -w configs/wordlist.txt
+    rate_limit: 10
+
+  - name: turbolist3r
+    version: latest
+    install: git clone https://github.com/fleetcaptain/Turbolist3r.git && cd Turbolist3r && pip3 install -r requirements.txt
+    version_cmd: python3 turbolist3r.py -h
+    passive_run: python3 turbolist3r.py -d {domain} -q
+    rate_limit: 5
+    workdir: Turbolist3r
+
+  - name: tugarecon
+    version: latest
+    install: git clone https://github.com/skynet0x01/tugarecon.git && cd tugarecon
+    version_cmd: .venv/bin/python tugarecon.py -h
+    passive_run: .venv/bin/python tugarecon.py -d {domain}
+    active_run: .venv/bin/python tugarecon.py -d {domain} -b
+    rate_limit: 5
+    workdir: tugarecon

@@ -1,0 +1,27 @@
+ratnosint7
+Copyright 2026 Ratnadeep.
+
+ratnosint7 is an open-source reconnaissance orchestration engine that integrates and coordinates the following third-party open-source tools. Each tool retains its own license and copyright. See THIRD_PARTY_TOOLS.md for detailed attribution and license information.
+
+Integrated Tools (13):
+
+Passive + Active:
+- subfinder (OWASP Project Discovery)
+- amass (OWASP)
+- findomain (Findomain Project)
+- sudomy (Screetsec)
+- tugarecon (skynet0x01)
+
+Passive Only:
+- assetfinder (Tom Hudson)
+- sublist3r (Aboul3la)
+- subscraper (m8sec)
+- turbolist3r (fleetcaptain)
+- dome (v4d1)
+- as3nt (Cinerieus)
+- substr3am (Nexxai)
+
+Active Only:
+- dnsx (OWASP Project Discovery)
+
+ratnosint7 is licensed under the Apache License, Version 2.0. See LICENSE file for details.

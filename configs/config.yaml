@@ -1,0 +1,15 @@
+# Performance tuning for concurrent tool execution.
+# Defaults: raw_buffer=8192, parsed_buffer=4096, unique_buffer=1024, parser_workers=cpu*2
+
+# Increase buffers to prevent parser/dedupe goroutines from blocking.
+# With 15+ tools running concurrently, domain flow can spike to 10k/sec.
+raw_buffer: 65536        # 64KB — hold output from all tools without blocking
+parsed_buffer: 32768     # 32KB — parsed domains before dedupe
+unique_buffer: 16384     # 16KB — unique domains before write
+
+# Parser workers: 2x CPU for light work (regex, normalization).
+# On 8-core, 16 workers = full throughput.
+parser_workers: 16
+
+# Scan timeout: 5 minutes per domain (all tools).
+timeout_minutes: 5

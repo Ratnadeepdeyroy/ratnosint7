@@ -1,0 +1,4 @@
+# Custom DNS resolvers (one IP per line)
+# Example:
+# 8.8.8.8
+# 1.1.1.1

@@ -1,0 +1,30 @@
+# Authors & Contributors
+
+ratnosint7 is maintained by:
+
+## Original Author
+- **Ratnadeep Dey Roy** (RATNADEEP DEY ROY) — Creator, core architecture, and active maintainer
+
+## Contributors
+
+We welcome contributions from the community. Contributors will be listed here:
+
+*To be updated as pull requests are merged.*
+
+---
+
+For guidelines on contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Special thanks to the authors and maintainers of the integrated tools:
+- **subfinder** — OWASP Project Discovery
+- **amass** — OWASP
+- **findomain** — Findomain Project
+- **assetfinder** — Tom Hudson
+- **sublist3r** — Aboul3la
+- **subscraper** — m8sec
+- **dome** — v4d1
+- **as3nt** — Cinerieus
+- **substr3am** — Nexxai
+- **dnsx** — OWASP Project Discovery
+
+See [THIRD_PARTY_TOOLS.md](THIRD_PARTY_TOOLS.md) for full tool attribution.
