@@ -281,8 +281,23 @@ func InstallFromConfig(ctx context.Context, tc config.ToolConfig) error {
 		var stderr bytes.Buffer
 		c.Stderr = &stderr
 		if err := c.Run(); err != nil {
-			if stderr.Len() > 0 {
-				return fmt.Errorf("install %s: %w\n%s", tc.Name, err, formatInstallStderr(tc, stderr.String()))
+			stderrStr := stderr.String()
+			// On modern Debian/Ubuntu/Fedora (PEP 668), pip refuses global installs.
+			// Retry with --break-system-packages to override the restriction.
+			if isPipCommand(args[0]) && strings.Contains(stderrStr, "externally-managed-environment") {
+				retryArgs := pipArgsWithBreakSystemPackages(args)
+				rc := exec.CommandContext(ctx, retryArgs[0], retryArgs[1:]...)
+				rc.Dir = c.Dir
+				var retryStderr bytes.Buffer
+				rc.Stderr = &retryStderr
+				if retryErr := rc.Run(); retryErr == nil {
+					continue
+				}
+				stderrStr = retryStderr.String()
+				err = fmt.Errorf("%w (--break-system-packages also failed)", err)
+			}
+			if stderrStr != "" {
+				return fmt.Errorf("install %s: %w\n%s", tc.Name, err, formatInstallStderr(tc, stderrStr))
 			}
 			return fmt.Errorf("install %s: %w", tc.Name, err)
 		}
@@ -300,9 +315,54 @@ func InstallFromConfig(ctx context.Context, tc config.ToolConfig) error {
 
 const python312Bin = "python3.12"
 
-// TugareconVenvPython returns the venv interpreter path for tugarecon, or empty if missing.
+// python312InstallHint returns a platform-appropriate install instruction for Python 3.12.
+func python312InstallHint() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "brew install python@3.12"
+	case "linux":
+		return "sudo apt install python3.12 (Debian/Ubuntu) or sudo dnf install python3.12 (Fedora/RHEL)"
+	case "windows":
+		return "download Python 3.12 from https://www.python.org/downloads/"
+	default:
+		return "install Python 3.12 from https://www.python.org/downloads/"
+	}
+}
+
+// venvPythonBin returns the python interpreter path inside a venv directory.
+func venvPythonBin(venvDir string) string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(venvDir, "Scripts", "python.exe")
+	}
+	return filepath.Join(venvDir, "bin", "python")
+}
+
+// VenvPythonBin is the exported form of venvPythonBin for use in other packages.
+func VenvPythonBin(venvDir string) string {
+	return venvPythonBin(venvDir)
+}
+
+// isPipCommand reports whether exe is a pip variant.
+func isPipCommand(exe string) bool {
+	base := filepath.Base(exe)
+	return base == "pip3" || base == "pip" || base == "pip3.12"
+}
+
+// pipArgsWithBreakSystemPackages inserts --break-system-packages after "install" in pip args.
+func pipArgsWithBreakSystemPackages(args []string) []string {
+	result := make([]string, 0, len(args)+1)
+	for _, a := range args {
+		result = append(result, a)
+		if a == "install" {
+			result = append(result, "--break-system-packages")
+		}
+	}
+	return result
+}
+
+// TugareconVenvPython returns the venv interpreter path for tugarecon.
 func TugareconVenvPython() string {
-	return filepath.Join(ToolsDir(), "tugarecon", ".venv", "bin", "python")
+	return venvPythonBin(filepath.Join(ToolsDir(), "tugarecon", ".venv"))
 }
 
 func checkTugareconInstallPrereqs(tc config.ToolConfig) error {
@@ -333,8 +393,8 @@ func CheckPython312ForTool(tc config.ToolConfig) error {
 func tugareconPython312Missing(toolName string) error {
 	if _, err := exec.LookPath(python312Bin); err != nil {
 		return fmt.Errorf(
-			"%s requires Python 3.12 but %q was not found on PATH — install: brew install python@3.12",
-			toolName, python312Bin,
+			"%s requires Python 3.12 but %q was not found on PATH — install: %s",
+			toolName, python312Bin, python312InstallHint(),
 		)
 	}
 	return nil
@@ -344,14 +404,14 @@ func installTugareconVenv(ctx context.Context, workDir string) error {
 	py312, err := exec.LookPath(python312Bin)
 	if err != nil {
 		return fmt.Errorf(
-			"install tugarecon: Python 3.12 is required but %q was not found on PATH — install: brew install python@3.12",
-			python312Bin,
+			"install tugarecon: Python 3.12 is required but %q was not found on PATH — install: %s",
+			python312Bin, python312InstallHint(),
 		)
 	}
 	if err := runInDir(ctx, workDir, py312, []string{"-m", "venv", ".venv"}); err != nil {
 		return fmt.Errorf("install tugarecon: create virtualenv: %w", err)
 	}
-	venvPy := filepath.Join(workDir, ".venv", "bin", "python")
+	venvPy := venvPythonBin(filepath.Join(workDir, ".venv"))
 	if err := runInDir(ctx, workDir, venvPy, []string{"-m", "pip", "install", "-r", "requirements.txt"}); err != nil {
 		return fmt.Errorf("install tugarecon: pip in virtualenv: %w", err)
 	}
@@ -374,10 +434,10 @@ func runInDir(ctx context.Context, dir, exe string, args []string) error {
 
 func formatInstallStderr(tc config.ToolConfig, stderr string) string {
 	if strings.Contains(stderr, "externally-managed-environment") {
-		return stderr + "\n(hint: tugarecon installs into a local .venv — rebuild ratnosint7 and run update-tools again)"
+		return stderr + "\n(hint: system pip is externally managed — retrying with --break-system-packages)"
 	}
 	if strings.EqualFold(tc.Name, "tugarecon") && strings.Contains(stderr, "dnspython>=2.8.0") {
-		return stderr + "\n(hint: tugarecon needs Python 3.12 — install: brew install python@3.12, then update-tools)"
+		return stderr + "\n(hint: tugarecon needs Python 3.12 — install: " + python312InstallHint() + ", then update-tools)"
 	}
 	return stderr
 }
@@ -414,20 +474,26 @@ func SuggestedInstallFix(toolName string) string {
 	}
 	switch n {
 	case "findomain":
-		return "brew install findomain — or use ratnosint7's bundled GitHub download path for findomain."
+		if runtime.GOOS == "darwin" {
+			return "brew install findomain — or use ratnosint7's bundled GitHub download (run update-tools)."
+		}
+		return "cargo install findomain — or use ratnosint7's bundled GitHub download (run update-tools)."
 	case "subfinder":
-		return "go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest — or brew install subfinder."
+		return "go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"
 	case "amass":
-		return "brew install amass — or install upstream release for your OS."
+		if runtime.GOOS == "darwin" {
+			return "brew install amass — or go install github.com/owasp-amass/amass/v4/...@latest"
+		}
+		return "go install github.com/owasp-amass/amass/v4/...@latest — or install upstream release for your OS."
 	case "assetfinder":
 		return "go install github.com/tomnomnom/assetfinder@latest"
 	case "dnsx":
-		return "go install github.com/projectdiscovery/dnsx/cmd/dnsx@latest — or brew where available."
+		return "go install github.com/projectdiscovery/dnsx/cmd/dnsx@latest"
 	case "tugarecon":
-		return "Python 3.12 required (brew install python@3.12) — update-tools creates ~/.ratnosint7/tools/tugarecon/.venv"
+		return "Python 3.12 required (" + python312InstallHint() + ") — update-tools creates ~/.ratnosint7/tools/tugarecon/.venv"
 	case "turbolist3r":
 		return "git clone https://github.com/fleetcaptain/Turbolist3r.git ~/.ratnosint7/tools/Turbolist3r && cd ~/.ratnosint7/tools/Turbolist3r && pip3 install -r requirements.txt"
 	default:
-		return fmt.Sprintf("brew install %s — or install from upstream and ensure PATH includes the binary.", n)
+		return fmt.Sprintf("Install %s from upstream docs and ensure PATH includes the binary.", n)
 	}
 }

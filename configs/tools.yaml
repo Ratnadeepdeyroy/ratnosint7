@@ -96,8 +96,8 @@ tools:
   - name: tugarecon
     version: latest
     install: git clone https://github.com/skynet0x01/tugarecon.git && cd tugarecon
-    version_cmd: .venv/bin/python tugarecon.py -h
-    passive_run: .venv/bin/python tugarecon.py -d {domain}
-    active_run: .venv/bin/python tugarecon.py -d {domain} -b
+    version_cmd: "{venv_python} tugarecon.py -h"
+    passive_run: "{venv_python} tugarecon.py -d {domain}"
+    active_run: "{venv_python} tugarecon.py -d {domain} -b"
     rate_limit: 5
     workdir: tugarecon

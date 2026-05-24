@@ -64,18 +64,21 @@ func (c ConfigPlugin) execCmd(ctx context.Context, rawCmd, domain string, output
 	if err := installer.CheckPython312ForTool(*c.Config); err != nil {
 		return err
 	}
+	var workDir string
+	if c.Config.WorkDir != "" {
+		workDir = filepath.Join(installer.ToolsDir(), c.Config.WorkDir)
+		// {venv_python} resolves to the platform-correct interpreter inside the tool's .venv.
+		venvPy := installer.VenvPythonBin(filepath.Join(workDir, ".venv"))
+		rawCmd = strings.ReplaceAll(rawCmd, "{venv_python}", venvPy)
+	}
 	args := splitRunCommand(rawCmd)
 	if len(args) == 0 {
 		return nil
 	}
 	exe := args[0]
 	runArgs := args[1:]
-	var workDir string
-	if c.Config.WorkDir != "" {
-		workDir = filepath.Join(installer.ToolsDir(), c.Config.WorkDir)
-	}
-	if workDir != "" && !filepath.IsAbs(exe) && strings.ContainsRune(exe, filepath.Separator) {
-		exe = filepath.Join(workDir, exe)
+	if workDir != "" && !filepath.IsAbs(exe) && (strings.Contains(exe, "/") || strings.ContainsRune(exe, filepath.Separator)) {
+		exe = filepath.Join(workDir, filepath.FromSlash(exe))
 	}
 	return runner.RunWithDirAndTimeout(ctx, workDir, exe, runArgs, output, c.Config.Timeout)
 }

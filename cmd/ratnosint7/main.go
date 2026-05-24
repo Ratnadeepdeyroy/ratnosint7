@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -125,7 +126,7 @@ func main() {
 			"  Passive:  subfinder, amass, findomain, assetfinder, sublist3r,\n" +
 			"            subscraper, dome, as3nt, substr3am, tugarecon (needs python3.12)\n" +
 			"  Active:   amass, findomain, dnsx, tugarecon (needs python3.12)\n\n" +
-			"  Prerequisites: brew install python@3.12 (required for tugarecon)\n",
+			"  Prerequisites: " + installer.SuggestedInstallFix("tugarecon") + "\n",
 		RunE:  runUpdateTools,
 	}
 	updateToolsCmd.Flags().StringVar(&configDirTools, "config", "configs", orange+"config directory"+reset)
@@ -654,18 +655,24 @@ func printToolInstallFailure(w *os.File, st ui.Styles, color bool, name string, 
 }
 
 func retryFindomainInstall(ctx context.Context, name string, firstErr error, st ui.Styles, color, printStatus bool) error {
-	if printStatus {
-		printInstallRetryNote(st, color, name, "primary install failed, trying Homebrew…")
-	}
-	brewErr := installer.Install(ctx, name, "brew", []string{"install", "findomain"})
-	if brewErr == nil {
+	if runtime.GOOS == "darwin" {
 		if printStatus {
-			printInstallRetryNote(st, color, name, "installed via Homebrew")
+			printInstallRetryNote(st, color, name, "primary install failed, trying Homebrew…")
 		}
-		return nil
-	}
-	if printStatus {
-		printInstallRetryNote(st, color, name, "Homebrew failed, downloading GitHub release…")
+		brewErr := installer.Install(ctx, name, "brew", []string{"install", "findomain"})
+		if brewErr == nil {
+			if printStatus {
+				printInstallRetryNote(st, color, name, "installed via Homebrew")
+			}
+			return nil
+		}
+		if printStatus {
+			printInstallRetryNote(st, color, name, "Homebrew failed, downloading GitHub release…")
+		}
+	} else {
+		if printStatus {
+			printInstallRetryNote(st, color, name, "primary install failed, downloading GitHub release…")
+		}
 	}
 	if err := installer.InstallFindomainFromGitHub(ctx); err != nil {
 		return firstErr
